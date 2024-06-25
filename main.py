@@ -1,35 +1,81 @@
 import socket
 import threading
+from typing import List
 
+class ResponseContent:
+    def __init__(self) -> None:
+        self.http_opener = "HTTP/1.1"
+        self.status_code = "404"
+        self.status = "Not Found"
+        self.headers = {}
+        self.body = ""
 
 def main():
+    server_addr = "localhost"
+    server_port = 4221
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
-    print("Ready to receive")
+    print(f"Starting HTTP server up at {server_addr} on port {server_port}...")
     while True:
+        print("Listening...")
         conn, addr = server_socket.accept()
-        threading.Thread(target=send_response, args=(conn, addr)).start()
+        threading.Thread(target=handle_connection, args=(conn, addr)).start()
         
 
-def send_response(conn, addr):
+def handle_connection(conn: socket, addr):
+    print("Established connection with", addr)
+    response_content = parse_message(conn)
+    send_response(conn, response_content)
+
+
+def parse_message(conn: socket):
     msg = conn.recv(1024).decode("utf-8")
     split_msg = msg.split()
+    request_type = split_msg[0]
     path = split_msg[1]
-    reply=b"HTTP/1.1 404 Not Found\r\n\r\n"
-    if path == "/":
-        reply = b"HTTP/1.1 200 OK\r\n\r\n"
+    received_msg_content = split_msg[2:]
 
-    elif path[:5] == "/echo":
-        reply = b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + str.encode(str(len(path) - 6)) + b"\r\n\r\n" + str.encode(path[6:])
-    elif path == "/user-agent":
-        header_found = False
-        for part in split_msg:
-            if header_found:
-                reply = b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: " + str.encode(str(len(part))) + b"\r\n\r\n" + str.encode(part)
+    if request_type == "GET":
+        return gather_get_response_content(path, received_msg_content)
+    else:
+        conn.send(b"HTTP/1.1 400 Bad Request (Only GET supported)\r\n\r\n")
+
+
+def gather_get_response_content(path: List[str], received_msg_content: List[str]):
+    response_content = ResponseContent()
+    if len(path) == 1:
+        response_content.status_code = "200"
+        response_content.status = "OK"
+        return response_content
+    
+    split_path = path[1:].split('/')
+    if split_path[0] == "echo":
+        response_content.status_code = "200"
+        response_content.status = "OK"
+        response_content.headers['Content-Type'] = 'text/plain'
+        response_content.headers['Content-Length'] = str(len(path[6:]))
+        response_content.body = path[6:]
+    elif split_path[0] == "user-agent":
+        response_content.status_code = "200"
+        response_content.status = "OK"
+        response_content.headers['Content-Type'] = 'text/plain'
+        for i, content in enumerate(received_msg_content):
+            if content == "User-Agent:":
+                response_content.headers["Content-Length"] = str(len(received_msg_content[i + 1]))
+                response_content.body = received_msg_content[i + 1]
                 break
-            if part == "User-Agent:":
-                header_found = True
+    return response_content
 
-    conn.sendall(reply)
+
+def send_response(conn: socket, response_content: ResponseContent)->bool:
+    reply = response_content.http_opener + " " + response_content.status_code + " " + response_content.status + "\r\n"
+    for header in response_content.headers:
+        reply += header + ": " + response_content.headers[header] + "\r\n"
+    reply += "\r\n" + response_content.body
+    conn.sendall(reply.encode())
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print()
+        print("Shutting down HTTP server...")
