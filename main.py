@@ -1,6 +1,12 @@
+import argparse
+import os
 import socket
 import threading
 from typing import List
+
+
+file_storage_path = '/'
+
 
 class ResponseContent:
     def __init__(self) -> None:
@@ -10,7 +16,25 @@ class ResponseContent:
         self.headers = {}
         self.body = ""
 
+    def __str__(self) -> str:
+        string = f"{{HTTP Opener: {self.http_opener}, Status Code: {self.status_code}, Status: {self.status}\n"
+        string += f"Headers: {self.headers}\n"
+        string += f"Body: '{self.body}' }}"
+        return string
+
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--directory', default='.')
+    args = parser.parse_args()
+    directory_arg = args.directory.split('/')
+    if directory_arg[0] == '':
+        directory_arg[0] = '/'
+    global file_storage_path
+    for folder in directory_arg:
+        if folder == '' or folder == '\n':
+            continue
+        file_storage_path = os.path.join(file_storage_path, folder)
     server_addr = "localhost"
     server_port = 4221
     server_socket = socket.create_server(("localhost", 4221), reuse_port=True)
@@ -63,6 +87,20 @@ def gather_get_response_content(path: List[str], received_msg_content: List[str]
                 response_content.headers["Content-Length"] = str(len(received_msg_content[i + 1]))
                 response_content.body = received_msg_content[i + 1]
                 break
+    elif split_path[0] == "files":
+        for path_part in split_path[1:]:
+            file_path = os.path.join(file_storage_path, path_part)
+        try:
+            with open(file_path) as file:
+                file_content = file.read()
+                response_content.status_code = "200"
+                response_content.status = "OK"
+                response_content.headers['Content-Type'] = 'application/octet-stream'
+                response_content.headers['Content-Length'] = str(len(file_content))
+                response_content.body = file_content
+        except:
+            pass
+        
     return response_content
 
 
@@ -72,6 +110,7 @@ def send_response(conn: socket, response_content: ResponseContent)->bool:
         reply += header + ": " + response_content.headers[header] + "\r\n"
     reply += "\r\n" + response_content.body
     conn.sendall(reply.encode())
+
 
 if __name__ == "__main__":
     try:
