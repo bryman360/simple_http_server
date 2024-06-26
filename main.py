@@ -8,17 +8,19 @@ from datetime import datetime
 from Messages import Request, Response
 
 
-file_storage_path = '/'
+file_storage_path = ''
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('--directory', default='.')
     args = parser.parse_args()
     directory_arg = args.directory.split('/')
+    global file_storage_path
     if directory_arg[0] == '':
         directory_arg[0] = '/'
-    global file_storage_path
+    elif directory_arg[0] != '~' and directory_arg[0] != '.':
+        file_storage_path = '.'
     for folder in directory_arg:
         if folder == '' or folder == '\n':
             continue
