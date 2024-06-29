@@ -1,3 +1,4 @@
+
 class Request:
     def __init__(self, message: str) -> None:
         self.request_type = None
@@ -24,7 +25,7 @@ class Request:
             # Parse out the headers
             headers_and_values = request_line_and_headers[1].split('\r\n')
             for header_and_value in headers_and_values:
-                header_and_value_split = header_and_value.split()
+                header_and_value_split = header_and_value.split(" ", 1)
                 self.headers[header_and_value_split[0][:-1]] = header_and_value_split[1]
         except:
             self.bad_request = True
@@ -45,11 +46,26 @@ class Response:
         self.status = "Not Found"
         self.headers = {}
         self.body = ""
+        self.compressed_body = False
 
     def __str__(self) -> str:
         string = f"{self.http_opener} {self.status_code} {self.status}\r\n"
         for header in self.headers:
             string += f"{header}: {self.headers[header]}\r\n"
         string += f"\r\n"
-        string += self.body
+        if self.compressed_body:
+            string += self.body.hex()
+        else:
+            string += self.body
         return string
+    
+    def encoded(self) -> bytes:
+        string = f"{self.http_opener} {self.status_code} {self.status}\r\n"
+        for header in self.headers:
+            string += f"{header}: {self.headers[header]}\r\n"
+        string += f"\r\n"
+        if self.compressed_body:
+            encoded_string = string.encode() + self.body
+        else:
+            encoded_string = (string + self.body).encode()
+        return encoded_string

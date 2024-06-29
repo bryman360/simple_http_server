@@ -6,6 +6,7 @@ from typing import List
 from datetime import datetime
 
 from Messages import Request, Response
+from Encoding import compress_response_body
 
 
 file_storage_path = ''
@@ -37,7 +38,7 @@ def main() -> None:
 def handle_connection(conn: socket, addr) -> None:
     print(datetime.now(), "Established connection with", addr, "and received a request")
     response = receive_message(conn)
-    conn.sendall(str(response).encode())
+    conn.sendall(response.encoded())
     print(datetime.now(), "Sent response message to", addr)
 
 
@@ -91,7 +92,7 @@ def handle_get_request(request: Request) -> Response:
     if give_404_response: return Response()
 
     handle_universal_request_headers(request, response)
-        
+
     return response
 
 
@@ -117,9 +118,11 @@ def return_bad_request() -> Response:
     return bad_response
 
 def handle_universal_request_headers(request: Request, response: Response) -> None:
-    if 'Accept-Encoding' in request.headers and request.headers['Accept-Encoding'] != 'invalid-encoding':
-        response.headers['Content-Encoding'] = request.headers['Accept-Encoding']
-    pass
+    if 'Accept-Encoding' in request.headers:
+        encoding_header_content = request.headers['Accept-Encoding']
+        encodings = encoding_header_content.split()
+        for encoding in encodings:
+            compress_response_body(encoding, response)
 
 
 if __name__ == "__main__":
