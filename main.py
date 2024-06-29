@@ -43,35 +43,34 @@ def handle_connection(conn: socket, addr) -> None:
 
 def receive_message(conn: socket) -> Response:
     msg = conn.recv(1024).decode("utf-8")
-    msg_content = Request(msg)
-    if msg_content.request_type == "GET":
-        return handle_get_request(msg_content)
-    elif msg_content.request_type == "POST":
-        return handle_post_request(msg_content)
-    else:
+    request = Request(msg)
+    if request.bad_request:
         bad_response = Response()
         bad_response.status_code = "400"
         bad_response.status = "Bad Request"
         return bad_response
+    if request.request_type == "GET":
+        return handle_get_request(request)
+    elif request.request_type == "POST":
+        return handle_post_request(request)
+    else:
+        return return_bad_request()
 
 
 def handle_get_request(request: Request) -> Response:
     response = Response()
+    response.status_code = "200"
+    response.status = "OK"
+    give_404_response = False
     if len(request.path) == 1:
-        response.status_code = "200"
-        response.status = "OK"
         return response
     
     split_path = request.path[1:].split('/')
     if split_path[0] == "echo":
-        response.status_code = "200"
-        response.status = "OK"
         response.headers['Content-Type'] = 'text/plain'
         response.headers['Content-Length'] = str(len(request.path[6:]))
         response.body = request.path[6:]
     elif split_path[0] == "user-agent":
-        response.status_code = "200"
-        response.status = "OK"
         response.headers['Content-Type'] = 'text/plain'
         response.headers['Content-Length'] = str(len(request.headers['User-Agent']))
         response.body = request.headers['User-Agent']
@@ -81,20 +80,46 @@ def handle_get_request(request: Request) -> Response:
         try:
             with open(file_path) as file:
                 file_content = file.read()
-                response.status_code = "200"
-                response.status = "OK"
                 response.headers['Content-Type'] = 'application/octet-stream'
                 response.headers['Content-Length'] = str(len(file_content))
                 response.body = file_content
         except:
-            pass
+            give_404_response = True
+    else:
+        give_404_response = True
+
+    if give_404_response: return Response()
+
+    handle_universal_request_headers(request, response)
         
     return response
 
 
 def handle_post_request(request: Request) -> Response:
     response = Response()
+    split_path = request.path[1:].split('/')
+    try:
+        for path_part in split_path[1:]:
+            file_path = os.path.join(file_storage_path, path_part)
+        with open(file_path, "w") as file:
+            file.write(request.body)
+            response.status_code = '201'
+            response.status = 'Created'
+    except:
+        return return_bad_request
+
     return response
+
+def return_bad_request() -> Response:
+    bad_response = Response()
+    bad_response.status_code = '400'
+    bad_response.status = 'Bad Request'
+    return bad_response
+
+def handle_universal_request_headers(request: Request, response: Response) -> None:
+    if 'Accept-Encoding' in request.headers and request.headers['Accept-Encoding'] != 'invalid-encoding':
+        response.headers['Content-Encoding'] = request.headers['Accept-Encoding']
+    pass
 
 
 if __name__ == "__main__":
