@@ -9,6 +9,9 @@
 #include <netdb.h>
 
 #include "messages/messages.hpp"
+#include "handlers/request_handlers.hpp"
+
+
 #define BUFF_SIZE 65536
 
 int main(int argc, char **argv) {
@@ -43,29 +46,27 @@ int main(int argc, char **argv) {
       std::cerr << "listen failed\n";
       return 1;
     }
-    Request("Hey");
     struct sockaddr_in client_addr;
     int client_addr_len = sizeof(client_addr);
     std::cout << "Waiting for a client to connect...\n";
 
-    std::string read_buffer(65536, '\0');
     int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
     std::cout << "Client connected via " << inet_ntoa(client_addr.sin_addr) << " on port " << ntohs(server_addr.sin_port) << "\n";
-    int bytesReceived = read(client_fd, &read_buffer[0], 65536);
+
+    std::string read_buffer(BUFF_SIZE, '\0');
+    int bytesReceived = read(client_fd, &read_buffer[0], BUFF_SIZE);
     if (bytesReceived < 0) {
       std::cout << "recv() failed";
     }
     else {
-      // std::cout << read_buffer;
       Request request(read_buffer);
-      Response def_response;
-      std::cout << "Request message: ";
-      std::cout << request.message() << std::endl;
-      std::cout << "Default Response message: ";
-      std::cout << def_response.message() << std::endl;
+      Response response;
+      if (request.bad_request) {}
+      else if (request.get_request_type() == "GET") { GET_handler(request, response);}
+      else if (request.get_request_type() == "POST") {}
 
-      const std::string response{"HTTP/1.1 200 OK\r\n\r\n"};
-      send(client_fd, &response[0], response.length(), 0);
+      std::string response_message = response.message();
+      send(client_fd, &response_message[0], response_message.length(), 0);
     }
 
     close(server_fd);

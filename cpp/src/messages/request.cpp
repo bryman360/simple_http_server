@@ -1,8 +1,7 @@
 #include <vector>
 #include <iostream>
 #include "messages.hpp"
-
-std::vector<std::string> split_string(std::string str, std::string delimiter = " ", int max_num_of_splits = -1);
+#include "../utils.hpp"
 
 std::string Request::message() {
     if (bad_request) {
@@ -23,6 +22,10 @@ std::string Request::message() {
 }
 
 Request::Request(std::string request_message) {
+    request_type = "";
+    http_opener = "HTTP/1.1";
+    path = "";
+    body = "";
     try {
         std::string clrf_delimiter = "\r\n";
         std::string double_clrf_delimiter = "\r\n\r\n";
@@ -56,19 +59,4 @@ Request::Request(std::string request_message) {
         bad_request = true;
     }
 
-};
-
-std::vector<std::string> split_string(std::string str, std::string delimiter, int max_num_of_splits) {
-    std::vector<std::string> output;
-    int start, end = -1*delimiter.size();
-    int num_of_splits = 0;
-    if (max_num_of_splits == -1) max_num_of_splits = str.length();
-    do {
-        start = end + delimiter.size();
-        end = str.find(delimiter, start);
-        output.push_back(str.substr(start, end - start));
-        num_of_splits += 1;
-    } while (end != -1 && num_of_splits < max_num_of_splits);
-    if (end != -1) output.push_back(str.substr(end + delimiter.size(), str.length() - 1));
-    return output;
 };
