@@ -8,6 +8,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include "messages/messages.hpp"
 #define BUFF_SIZE 65536
 
 int main(int argc, char **argv) {
@@ -42,10 +43,9 @@ int main(int argc, char **argv) {
       std::cerr << "listen failed\n";
       return 1;
     }
-
+    Request("Hey");
     struct sockaddr_in client_addr;
     int client_addr_len = sizeof(client_addr);
-
     std::cout << "Waiting for a client to connect...\n";
 
     std::string read_buffer(65536, '\0');
@@ -56,8 +56,16 @@ int main(int argc, char **argv) {
       std::cout << "recv() failed";
     }
     else {
-      std::cout << read_buffer;
+      // std::cout << read_buffer;
+      Request request(read_buffer);
+      Response def_response;
+      std::cout << "Request message: ";
+      std::cout << request.message() << std::endl;
+      std::cout << "Default Response message: ";
+      std::cout << def_response.message() << std::endl;
 
+      const std::string response{"HTTP/1.1 200 OK\r\n\r\n"};
+      send(client_fd, &response[0], response.length(), 0);
     }
 
     close(server_fd);
