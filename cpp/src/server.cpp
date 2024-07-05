@@ -7,12 +7,11 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <thread>
 
 #include "messages/messages.hpp"
-#include "handlers/request_handlers.hpp"
+#include "handlers/handlers.hpp"
 
-
-#define BUFF_SIZE 65536
 
 int main(int argc, char **argv) {
     // Flush after every std::cout / std::cerr
@@ -50,24 +49,11 @@ int main(int argc, char **argv) {
     int client_addr_len = sizeof(client_addr);
     std::cout << "Waiting for a client to connect...\n";
 
-    int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
-    std::cout << "Client connected via " << inet_ntoa(client_addr.sin_addr) << " on port " << ntohs(server_addr.sin_port) << "\n";
-
-    std::string read_buffer(BUFF_SIZE, '\0');
-    int bytesReceived = read(client_fd, &read_buffer[0], BUFF_SIZE);
-    if (bytesReceived < 0) {
-      std::cout << "recv() failed";
-    }
-    else {
-      Request request(read_buffer);
-      Response response;
-      if (request.bad_request) {}
-      else if (request.get_request_type() == "GET") { GET_handler(request, response);}
-      else if (request.get_request_type() == "POST") {}
-
-      std::string response_message = response.message();
-      send(client_fd, &response_message[0], response_message.length(), 0);
-    }
+    while (true) {
+      int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
+      std::thread thread_obj(connection_handler, client_fd, client_addr.sin_addr, server_addr.sin_port);
+      thread_obj.join();
+    };
 
     close(server_fd);
 
