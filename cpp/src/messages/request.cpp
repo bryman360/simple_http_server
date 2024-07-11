@@ -1,7 +1,7 @@
 #include <vector>
 #include <iostream>
 #include "messages.hpp"
-#include "../utils.hpp"
+#include "../utils/utils.hpp"
 
 std::string Request::message() {
     if (bad_request) {

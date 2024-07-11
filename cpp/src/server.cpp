@@ -11,12 +11,17 @@
 
 #include "messages/messages.hpp"
 #include "handlers/handlers.hpp"
-
+#include "utils/parser.hpp"
 
 int main(int argc, char **argv) {
     // Flush after every std::cout / std::cerr
     std::cout << std::unitbuf;
     std::cerr << std::unitbuf;
+
+    Parser parser;
+    parser.addSingleValueArgument("--directory", false, "/tmp/");
+    if (parser.parseArgs(argc, argv)) return -1;
+    return 0;
 
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0) {

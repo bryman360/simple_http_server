@@ -1,5 +1,9 @@
+#pragma once
+#include <iostream>
 #include <vector>
 #include <string>
+#include <string.h>
+#include "utils.hpp"
 
 
 std::vector<std::string> split_string(std::string str, std::string delimiter, int max_num_of_splits) {
