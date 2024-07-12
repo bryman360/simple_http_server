@@ -41,7 +41,7 @@ void Parser::addMultiValueArgument(std::string arg_key, bool required, int min_v
     if (required) {
         requiredMultiValArgsPtrs.push_back(mvarg);
     }
-};
+}
 
 
 void Parser::parseArgs(int argc, char **argv) {
@@ -83,7 +83,7 @@ void Parser::parseArgs(int argc, char **argv) {
     _verifyRequiredArgumentsSet(argc);
     printArgumentList();
     return;
-};
+}
 
 
 void Parser::_parseKeyArg(char **argv, int arg_key_index, int last_value_index) {
@@ -143,6 +143,24 @@ void Parser::_verifyRequiredArgumentsSet(int argc) {
 }
 
 
+std::vector<std::string> Parser::operator[] (std::string argument) {
+    if (multiValKeyArgs.find(argument) != multiValKeyArgs.end()) return multiValKeyArgs[argument]->getValues();
+
+    std::vector<std::string> output;
+    if (singleValKeyArgs.find(argument) != singleValKeyArgs.end()) {
+        output.push_back(singleValKeyArgs[argument]->getValue());
+        return output;
+    }
+
+    for (SingleValueArgument* posArg : posArgs) {
+        if (posArg->getName() == argument) {
+            output.push_back(posArg->getValue());
+            return output;
+        }
+    }
+}
+
+
 Argument::Argument(std::string arg_name, bool required, SUPPORTED_ARG_TYPES arg_type) {
     _name = arg_name;
     _required = required;
@@ -156,17 +174,17 @@ std::string Argument::getName() { return _name;};
 
 SingleValueArgument::SingleValueArgument(std::string arg_name, bool required, std::string default_value, SUPPORTED_ARG_TYPES arg_type) : Argument(arg_name, required, arg_type) {
     if (default_value != "--") _value = default_value;
-};
+}
 
 
 void SingleValueArgument::setValue(std::string value) {
     _value = value;
-};
+}
 
 
 std::string SingleValueArgument::getValue() {
     return _value;
-};
+}
 
 
 bool SingleValueArgument::isRequired() {
@@ -177,12 +195,12 @@ bool SingleValueArgument::isRequired() {
 MultiValueArgument::MultiValueArgument(std::string arg_name, bool required,  int min_vals, int max_vals, SUPPORTED_ARG_TYPES arg_type) : Argument(arg_name, required, arg_type) {
     _min_vals = min_vals;
     _max_vals = max_vals;
-};
+}
 
 
 void MultiValueArgument::pushValue(std::string value) {
     _values.push_back(value);
-};
+}
 
 
 void MultiValueArgument::checkValuesCount() {
@@ -202,12 +220,12 @@ void MultiValueArgument::checkValuesCount() {
         std::cout << pe.message() << std::endl;
         exit(-1);
     }
-};
+}
 
 
 std::vector<std::string> MultiValueArgument::getValues() {
     return _values;
-};
+}
 
 
 void Parser::printArgumentList() {
@@ -218,7 +236,7 @@ void Parser::printArgumentList() {
     std::cout << "Multi Value Keyword Arguments:" << std::endl;
     for (auto & keyMultiValArg : multiValKeyArgs) keyMultiValArg.second->printInfo();
 
-};
+}
 
 void SingleValueArgument::printInfo() {
     std::cout << "~~Single Value Argument: " << _name << ", Value: " << _value << ", Required: " << (_required?"True":"False") << std::endl;

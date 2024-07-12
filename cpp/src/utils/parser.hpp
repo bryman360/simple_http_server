@@ -65,4 +65,5 @@ public:
     void addMultiValueArgument(std::string arg_name, bool required=false, int min_vals=0, int max_args=-1, SUPPORTED_ARG_TYPES arg_type=STRING_ARG);
     void parseArgs(int argc, char **argv);
     void printArgumentList();
+    std::vector<std::string>  operator[](std::string keyword);
 };
