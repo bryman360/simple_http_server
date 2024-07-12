@@ -20,11 +20,12 @@ protected:
     int _arg_type;
 public:
     Argument(std::string arg_key, bool required, SUPPORTED_ARG_TYPES arg_type=STRING_ARG);
+    std::string getName();
 
 };
 
 
-class SingleValueArgument : private Argument {
+class SingleValueArgument : public Argument {
 private:
     std::string _value;
 public:
@@ -33,17 +34,18 @@ public:
     template <typename Type> Type getValue();
     SingleValueArgument(std::string arg_name, bool required, std::string default_value, SUPPORTED_ARG_TYPES arg_type=STRING_ARG);
     void printInfo();
+    bool isRequired();
 };
 
 
-class MultiValueArgument : private Argument {
+class MultiValueArgument : public Argument {
 private:
     std::vector<std::string> _values;
     int _min_vals;
     int _max_vals;
 public:
     void pushValue(std::string value);
-    int checkValuesCount();
+    void checkValuesCount();
     std::vector<std::string> getValues();
     MultiValueArgument(std::string arg_name, bool required,  int min_vals, int max_vals, SUPPORTED_ARG_TYPES arg_type=STRING_ARG);
     void printInfo();
@@ -51,16 +53,16 @@ public:
 
 class Parser{
 private:
-    std::vector<SingleValueArgument> posArgs;
+    std::vector<SingleValueArgument *> posArgs;
     std::map<std::string, SingleValueArgument *> singleValKeyArgs;
     std::map<std::string, MultiValueArgument *> multiValKeyArgs;
     std::vector<SingleValueArgument *> requiredSingleValArgsPtrs;
     std::vector<MultiValueArgument *> requiredMultiValArgsPtrs;
-    int _parseKeyArg(char **argv, int arg_key_index, int last_value_index);
-    int _verifyRequiredArgumentsSet();
+    void _parseKeyArg(char **argv, int arg_key_index, int last_value_index);
+    void _verifyRequiredArgumentsSet(int argc);
 public:
     void addSingleValueArgument(std::string arg_name, bool required=false, std::string default_val="--", SUPPORTED_ARG_TYPES arg_type=STRING_ARG);
     void addMultiValueArgument(std::string arg_name, bool required=false, int min_vals=0, int max_args=-1, SUPPORTED_ARG_TYPES arg_type=STRING_ARG);
-    int parseArgs(int argc, char **argv);
+    void parseArgs(int argc, char **argv);
     void printArgumentList();
 };

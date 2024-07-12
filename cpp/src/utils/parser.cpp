@@ -1,13 +1,32 @@
 #include "parser.hpp"
+#include <exception>
+#include <string.h>
+
+class ParserException : public std::exception {
+private:
+    std::string _message;
+public:
+    ParserException(std::string exception_message) : _message(exception_message) {};
+    std::string message() {return _message;};
+};
 
 
-//TODO: Add my own Exception and add throw/catches so no relying on 'return 1' as indicators of errors
 void Parser::addSingleValueArgument(std::string arg_key, bool required, std::string default_val, SUPPORTED_ARG_TYPES arg_type) {
+    try {
+        if (posArgs.size() > 0) {
+            if (!(posArgs[singleValKeyArgs.size() - 1]->isRequired()) && required) {
+
+                throw ParserException("Developer Error. Unable to add positional argument. Cannot have a required positional argument after a non-required positional argument.");
+            }
+        }
+    } catch(ParserException pe) {
+        std::cout << pe.message() << std::endl;
+        exit(-1);
+    }
     SingleValueArgument *svarg = new SingleValueArgument(arg_key, required, default_val, arg_type);
     if (arg_key[0] == '-' && arg_key[1] == '-') singleValKeyArgs.insert({arg_key, svarg});
-    else posArgs.push_back(*svarg);
+    else posArgs.push_back(svarg);
 
-    //TODO: Add check to verify previous posArg is required if this one is as well. If not, throw an error as that wouldn't make sense to have a required pos argument after a non-required pos argument (both should be required)
     if (required) {
         requiredSingleValArgsPtrs.push_back(svarg);
     }
@@ -25,8 +44,11 @@ void Parser::addMultiValueArgument(std::string arg_key, bool required, int min_v
 };
 
 
-int Parser::parseArgs(int argc, char **argv) {
-    if (argc == 1) return 0;
+void Parser::parseArgs(int argc, char **argv) {
+    if (argc == 1) {
+        _verifyRequiredArgumentsSet(argc);
+        return;
+    }
 
     bool doneWithPositionArgs = false;
     int i = 1;
@@ -37,54 +59,87 @@ int Parser::parseArgs(int argc, char **argv) {
             keyArgStartIndex = i;
         }
         else if (!doneWithPositionArgs) {
-            posArgs[i-1].setValue(argv[i]);
+            try {
+                if (posArgs.size() <= i - 1) {
+                    throw ParserException("Too many positional arguments given. Expected " + std::to_string(posArgs.size()) + " but received at least " + std::to_string(i) + " argument" + (i == 1 ? "" : "s") + ".");
+                }
+                posArgs[i-1]->setValue(argv[i]);
+            } catch (ParserException pe) {
+                std::cout << pe.message() << std::endl;
+                exit(-1);
+            }
         }
         else if (argv[i][0] == '-') {
-            if (_parseKeyArg(argv, keyArgStartIndex, i-1)) return 1;
+            _parseKeyArg(argv, keyArgStartIndex, i-1);
             keyArgStartIndex = i;
         }
         i++;
     };
 
     if (i == argc && doneWithPositionArgs) {
-        if(_parseKeyArg(argv, keyArgStartIndex, i-1)) return 1;
+        _parseKeyArg(argv, keyArgStartIndex, i-1);
     }
 
+    _verifyRequiredArgumentsSet(argc);
     printArgumentList();
-    if(_verifyRequiredArgumentsSet()) return 1;
-    return 0;
+    return;
 };
 
 
-int Parser::_parseKeyArg(char **argv, int arg_key_index, int last_value_index) {
-    if (arg_key_index >= last_value_index) return 1;
-    
+void Parser::_parseKeyArg(char **argv, int arg_key_index, int last_value_index) {
+    try {
+        if (arg_key_index >= last_value_index){
+            std::string output_message = "Unable to properly parse keyword argument ";
+            output_message += argv[arg_key_index];
+            output_message += ". Expected 1 value to be passed, but 0 were given.";
+            throw ParserException(output_message);
+        };
+    } catch (ParserException pe) {
+        std::cout << pe.message() << std::endl;
+        exit(-1);
+    }
+        
     if (singleValKeyArgs.find(argv[arg_key_index]) != singleValKeyArgs.end()) {
-        if (arg_key_index + 1 != last_value_index) {std::cout << "Indexes wrong!" << std::endl; return 1;}
         singleValKeyArgs[argv[arg_key_index]]->setValue(argv[last_value_index]);
-        return 0;
+        return;
     }
 
     if (multiValKeyArgs.find(argv[arg_key_index]) != multiValKeyArgs.end()) {
         for (int i = arg_key_index + 1; i <= last_value_index; i++) {
             multiValKeyArgs[argv[arg_key_index]]->pushValue(argv[i]);
         }
-        if (multiValKeyArgs[argv[arg_key_index]]->checkValuesCount()) return 1;
-        return 0;
+        multiValKeyArgs[argv[arg_key_index]]->checkValuesCount();
+        return;
     }
-    std::cout << "DIDNT FIND IT" << std::endl;
-    return 1;
 }
 
 
-int Parser::_verifyRequiredArgumentsSet() {
-    for (SingleValueArgument *const req_svarg_ptr : requiredSingleValArgsPtrs) {
-        if (req_svarg_ptr->getValue().empty()) return 1;
+void Parser::_verifyRequiredArgumentsSet(int argc) {
+    try {
+        for (SingleValueArgument *const req_svarg_ptr : requiredSingleValArgsPtrs) {
+            if (req_svarg_ptr->getValue().empty()) {
+                std::string error_message;
+                if (singleValKeyArgs.find(req_svarg_ptr->getName()) != singleValKeyArgs.end())
+                    error_message = "Keyword argument " + req_svarg_ptr->getName() + " is required but not given.";
+                else {
+                    std::string arg_name = req_svarg_ptr->getName();
+                    for (int i = 0;i < posArgs.size(); i++) {
+                        if (arg_name == posArgs[i]->getName()) {
+                            error_message = "Not enough positional arguments given. Argument " + arg_name + " is required at position " + std::to_string(i+1);
+                            error_message = error_message +  " but " + (argc-1 == 0 ? "" : "only ") + std::to_string(argc - 1) + (argc-1 == 1 ? " argument was" : " arguments were") + " given.";
+                        }
+                    }
+                }
+                throw ParserException(error_message);
+            }
+        }
+    } catch (ParserException pe) {
+        std::cout << pe.message() << std::endl;
+        exit(-1);
     }
     for (MultiValueArgument *const req_mvarg_ptr : requiredMultiValArgsPtrs) {
-        if (req_mvarg_ptr->checkValuesCount()) return 1;
+        req_mvarg_ptr->checkValuesCount();
     }
-    return 0;
 }
 
 
@@ -94,6 +149,9 @@ Argument::Argument(std::string arg_name, bool required, SUPPORTED_ARG_TYPES arg_
     if (arg_type >= END_OF_SUPPORTED_ARG_TYPES || arg_type < 0) _arg_type=STRING_ARG;
     else _arg_type=arg_type; 
 }
+
+
+std::string Argument::getName() { return _name;};
 
 
 SingleValueArgument::SingleValueArgument(std::string arg_name, bool required, std::string default_value, SUPPORTED_ARG_TYPES arg_type) : Argument(arg_name, required, arg_type) {
@@ -111,6 +169,11 @@ std::string SingleValueArgument::getValue() {
 };
 
 
+bool SingleValueArgument::isRequired() {
+    return _required;
+}
+
+
 MultiValueArgument::MultiValueArgument(std::string arg_name, bool required,  int min_vals, int max_vals, SUPPORTED_ARG_TYPES arg_type) : Argument(arg_name, required, arg_type) {
     _min_vals = min_vals;
     _max_vals = max_vals;
@@ -122,11 +185,23 @@ void MultiValueArgument::pushValue(std::string value) {
 };
 
 
-int MultiValueArgument::checkValuesCount() {
+void MultiValueArgument::checkValuesCount() {
     int values_count = _values.size();
 
-    if (values_count < _min_vals || (values_count > _max_vals && _max_vals != -1)) return 1;
-    return 0;
+    try {
+        if (values_count < _min_vals || (values_count > _max_vals && _max_vals != -1)) {
+            std::string output_message;
+            if (_max_vals == -1) output_message = "Argument " + _name + " requires at least " + std::to_string(_min_vals) + " values, but only " + std::to_string(values_count) + (values_count == 1 ? " was" : " were") + " given.";
+            else {
+                output_message = "Argument " + _name + (_required ? " is required and" : "") + " requires between " + std::to_string(_min_vals) + " and " + std::to_string(_max_vals) + " values, but ";
+                output_message += (values_count < _min_vals && values_count != 0 ? "only " : "") + std::to_string(values_count) + (values_count == 1 ? " was" : " were") + " given.";
+            }
+            throw ParserException(output_message);
+        }
+    } catch (ParserException pe) {
+        std::cout << pe.message() << std::endl;
+        exit(-1);
+    }
 };
 
 
@@ -137,7 +212,7 @@ std::vector<std::string> MultiValueArgument::getValues() {
 
 void Parser::printArgumentList() {
     std::cout << "Positional Arguments:" << std::endl;
-    for (auto & posArg : posArgs) posArg.printInfo();
+    for (auto & posArg : posArgs) posArg->printInfo();
     std::cout << "Single Value Keyword Arguments:" << std::endl;
     for (auto & keySingleValArg : singleValKeyArgs) keySingleValArg.second->printInfo();
     std::cout << "Multi Value Keyword Arguments:" << std::endl;
