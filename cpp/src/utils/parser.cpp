@@ -1,6 +1,4 @@
 #include "parser.hpp"
-#include <exception>
-#include <string.h>
 
 class ParserException : public std::exception {
 private:
@@ -81,7 +79,6 @@ void Parser::parseArgs(int argc, char **argv) {
     }
 
     _verifyRequiredArgumentsSet(argc);
-    printArgumentList();
     return;
 }
 
@@ -158,6 +155,7 @@ std::vector<std::string> Parser::operator[] (std::string argument) {
             return output;
         }
     }
+    return output;
 }
 
 

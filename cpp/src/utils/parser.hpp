@@ -3,6 +3,8 @@
 #include <string>
 #include <map>
 #include <iostream>
+#include <exception>
+#include <string.h>
 
 enum SUPPORTED_ARG_TYPES {
     STRING_ARG,

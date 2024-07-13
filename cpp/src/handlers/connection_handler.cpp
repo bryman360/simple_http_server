@@ -1,10 +1,4 @@
-#include <iostream>
-#include <string>
-#include <arpa/inet.h>
-#include <unistd.h>
-
 #include "handlers.hpp"
-#include "../messages/messages.hpp"
 
 
 #define READ_BUFF_SIZE 65536
@@ -24,8 +18,8 @@ void connection_handler(int client_fd, in_addr client_addr, in_port_t client_por
         Request request(read_buffer);
         Response response;
         if (request.bad_request) {}
-        else if (request.get_request_type() == "GET") { GET_handler(request, response);}
-        else if (request.get_request_type() == "POST") {}
+        else if (request.get_request_type() == "GET") {GET_handler(request, response);}
+        else if (request.get_request_type() == "POST") {POST_handler(request, response);}
 
         std::string response_message = response.message();
         send(client_fd, &response_message[0], response_message.length(), 0);
