@@ -41,5 +41,6 @@ class Request {
     std::string get_request_type() { return request_type; }
     std::string get_path() { return path; }
     std::string get_body() { return body; }
+    bool is_header_present(std::string header) {return (headers.find(header) != headers.end());}
     std::vector<std::string> get_header_content(std::string header) { return headers[header];}
 };

@@ -6,8 +6,6 @@
 
 void connection_handler(int client_fd, in_addr client_addr, in_port_t client_port) {
     std::cout << "Client connected via " << inet_ntoa(client_addr) << " on port " << ntohs(client_port) << std::endl;
-    // std::cout << "Threading" << std::endl;
-    // return;
 
     std::string read_buffer(READ_BUFF_SIZE, '\0');
     int bytesReceived = read(client_fd, &read_buffer[0], READ_BUFF_SIZE);

@@ -37,13 +37,17 @@ void GET_handler(Request request, Response &response) {
         else {
             response.set_status_code("404");
             response.set_status("Not Found");
+            return;
         }
         
     }
     else {
         response.set_status_code("404");
         response.set_status("Not Found");
+        return;
     };
+
+    handle_universal_request_headers(request, response);
     return;
 }
 
@@ -78,4 +82,16 @@ void POST_handler(Request request, Response &response) {
         response.set_status("Not Found");
     }
     return;
+}
+
+
+void handle_universal_request_headers(Request request, Response &response) {
+    if (request.is_header_present("Accept-Encoding")) {
+        std::vector<std::string> encoding_types = request.get_header_content("Accept-Encoding");
+        for (std::string const encoding_type : encoding_types) {
+            if (encoding_type == "gzip") {
+                response.add_header_content("Content-Encoding", "gzip");
+            }
+        }
+    }
 }
