@@ -58,8 +58,7 @@ int main(int argc, char **argv) {
 
     while (true) {
       int client_fd = accept(server_fd, (struct sockaddr *) &client_addr, (socklen_t *) &client_addr_len);
-      std::thread thread_obj(connection_handler, client_fd, client_addr.sin_addr, server_addr.sin_port);
-      thread_obj.join();
+      std::thread(connection_handler, client_fd, client_addr.sin_addr, server_addr.sin_port).detach();
     };
 
     close(server_fd);
