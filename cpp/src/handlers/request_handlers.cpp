@@ -16,13 +16,11 @@ void GET_handler(Request request, Response &response) {
     }
     else if (split_path[1] == "echo") {
         response.add_header_content("Content-Type", "text/plain");
-        response.add_header_content("Content-Length", std::to_string(split_path[2].length()) );
         response.set_body(split_path[2]);
     }
     else if (split_path[1] == "user-agent") {
         std::string user_agent = request.get_header_content("User-Agent")[0];
         response.add_header_content("Content-Type", "text/plain");
-        response.add_header_content("Content-Length", std::to_string(user_agent.length()) );
         response.set_body(user_agent);
     }
     else if (split_path[1] == "files") {
@@ -32,7 +30,6 @@ void GET_handler(Request request, Response &response) {
             sstr << file.rdbuf();
             response.add_header_content("Content-Type", "application/octet-stream");
             response.set_body(sstr.str());
-            response.add_header_content("Content-Length", std::to_string(sstr.str().length()));
         }
         else {
             response.set_status_code("404");
@@ -48,6 +45,9 @@ void GET_handler(Request request, Response &response) {
     };
 
     handle_universal_request_headers(request, response);
+    if (response.get_body().size() > 0) {
+        response.add_header_content("Content-Length", std::to_string(response.get_body().size()));
+    }
     return;
 }
 
@@ -91,6 +91,15 @@ void handle_universal_request_headers(Request request, Response &response) {
         for (std::string const encoding_type : encoding_types) {
             if (encoding_type == "gzip") {
                 response.add_header_content("Content-Encoding", "gzip");
+                try {
+                    std::string encoded_body = gzip_encoding(response.get_body());
+                    response.set_body(encoded_body);
+                } catch(...) {
+                    std::cout << "Resetting response, apparently" << std::endl;
+                    response.reset_response();
+                    response.set_status_code("500");
+                    response.set_status("Internal Server Error");
+                }
             }
         }
     }

@@ -30,3 +30,11 @@ void Response::add_header_content(std::string header, std::string content) {
     if (headers.find(header) == headers.end()) headers[header] = std::vector<std::string>();
     headers[header].push_back(content);
 }
+
+
+void Response::reset_response() {
+    status_code = "404";
+    status = "Not Found";
+    body = "";
+    headers = std::map <std::string, std::vector<std::string>>();
+}

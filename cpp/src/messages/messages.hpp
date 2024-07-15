@@ -22,7 +22,8 @@ class Response {
     void set_status(std::string new_status_message) { status = new_status_message; }
     void set_body(std::string new_body) { body = new_body; }
     void add_header_content(std::string header, std::string content);
-
+    std::string get_body() {return body;}
+    void reset_response();
 };
 
 class Request {
